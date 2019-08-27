@@ -174,5 +174,8 @@ ax1.set_zlabel('P(L|C,D)')
 ax1.set_title('3-Day Cumulative Rainfall', fontsize = 25)
 
 
-##matrix.loc[(matrix['duration'] >= '10D')&(matrix['duration']<='30D')]
-##plt.plot(bayes.n_duration/pd.Timedelta(days=1),bayes.p_tot)
+'''
+new algo needed
+'''
+matrix.loc[(matrix['duration'] >= '10D')&(matrix['duration']<='30D')]
+plt.plot(bayes.n_duration/pd.Timedelta(days=1),bayes.p_tot)
