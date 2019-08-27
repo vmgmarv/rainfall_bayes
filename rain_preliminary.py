@@ -72,41 +72,52 @@ df_merge = pd.merge(df_rain, df_movt, on = 'id')
 df_merge['duration'] = df_merge.ts_landslide - df_merge.ts_rain
 df_merge = df_merge.sort_values('duration')
 
-matrix = df_merge[['duration','three_day','trigger_type']]
+matrix = df_merge[['ts_rain','duration','one_day','trigger_type']]
 matrix['duration'] = matrix['duration'].dt.round('1D')
 
 non_neg = matrix[matrix.duration >= '1D']
 
 
-d_u = non_neg.duration.unique()
+################################################################# minimum day
+non_neg.reset_index(inplace=True)
+non_neg['ts_rain'] = non_neg['ts_rain'].dt.round('1D')
+
+indices = non_neg.groupby('ts_rain')['duration'].idxmin
+min_movt = non_neg.loc[indices].sort_values('ts_rain')
+#################################################################
+
+d_u = np.arange(pd.Timedelta('1D'), pd.Timedelta('50D'), pd.Timedelta('2D'))
 rain_u = np.arange(1,600,20)
 
-
-duration_u = d_u[0:50]
 w = []
+wo = []
 r = []
 d = []
 final = pd.DataFrame()
-for i in range(len(duration_u)):
+for i in range(len(d_u)):
     try:
         for j in range(len(rain_u)):
-            w_ = len(matrix[(matrix.duration <= duration_u[i]) &\
-                             (matrix.duration >= '0D') &\
-                             (matrix.three_day <= rain_u[j]) &\
-                             (matrix.three_day >= 0)])
+            w_ = len(min_movt[(min_movt.duration <= d_u[i+1]) &\
+                             (min_movt.duration >= d_u[i]) &\
+                             (min_movt.one_day <= rain_u[j+1]) &\
+                             (min_movt.one_day >= rain_u[j])])
+            wout = len(min_movt[(min_movt.one_day >= rain_u[j]) &\
+                               (min_movt.duration >= d_u[i])])
             w.append(w_)
             r.append(rain_u[j])
-            d.append(duration_u[i])
+            d.append(d_u[i])
+            wo.append(wout)
             
-            tem = pd.DataFrame({'w':w, 'rain':r, 'duration':d})
+            tem = pd.DataFrame({'w':w, 'wo':wo, 'rain':r, 'duration':d})
             
             final = pd.concat([final, tem])
     except:
         print('Fail', i, 'and', j)
         pass
 
-final['wo'] = len(matrix) - final.w
+
 final.reset_index(inplace=True)
+final = final.drop_duplicates(subset='index', keep='first')
 
 
 '''
@@ -114,20 +125,20 @@ Bayesian proper
 '''
 tot_triggers = final.w.sum()
 total = final.w.sum() + final.wo.sum()
-p3 = tot_triggers / total
+p3 = tot_triggers / len(df_rain) #p(landslide)
 
 p1 = []
 p2 = []
 p_tot = []
 new_duration = []
 new_rain = []
-for m in range(len(duration_u)):
+for m in range(len(d_u)):
     try:
         print('duration ', m)
         for n in range(len(rain_u)):
             try:
-                p_1 = final.loc[(final['duration'] <= duration_u[m+1]) & \
-                                 (final['duration'] >= duration_u[m]) & \
+                p_1 = final.loc[(final['duration'] <= d_u[m+1]) & \
+                                 (final['duration'] >= d_u[m]) & \
                                  (final['rain'] <= rain_u[n+1]) & \
                                  (final['rain'] >= rain_u[n])]
                 triggers = p_1.w.sum()
@@ -135,7 +146,7 @@ for m in range(len(duration_u)):
                 
                 p1.append(triggers/tot_triggers)
                 p2.append(p_2) 
-                new_duration.append(duration_u[m])
+                new_duration.append(d_u[m])
                 new_rain.append(rain_u[n])
             except:
                 print('error rain ', n)
@@ -145,7 +156,11 @@ for m in range(len(duration_u)):
         pass
 
 bayes = pd.DataFrame({'p1':p1, 'p2':p2, 'n_rain':new_rain, 'n_duration':new_duration})
-bayes['p_tot'] = (bayes.p1 * p3) / (bayes.p2)
+
+try:
+    bayes['p_tot'] = (bayes.p1 * p3) / (bayes.p2)
+except:
+    bayes['p_tot'] = float('NaN')
 
 #pos = list((bayes.n_duration / pd.Timedelta(days=1)))
 pos = list(bayes.n_rain)
@@ -171,11 +186,11 @@ ax1.bar3d(x3, y3, z3, dx, dy, dz)
 ax1.set_xlabel('Duration (Days)')
 ax1.set_ylabel('Cumulative rainfall (mm)')
 ax1.set_zlabel('P(L|C,D)')
-ax1.set_title('3-Day Cumulative Rainfall', fontsize = 25)
+ax1.set_title('1-Day Cumulative Rainfall', fontsize = 25)
 
 
-'''
-new algo needed
-'''
-matrix.loc[(matrix['duration'] >= '10D')&(matrix['duration']<='30D')]
-plt.plot(bayes.n_duration/pd.Timedelta(days=1),bayes.p_tot)
+#'''
+#new algo needed
+#'''
+#matrix.loc[(matrix['duration'] >= '10D')&(matrix['duration']<='30D')]
+#plt.plot(bayes.n_duration/pd.Timedelta(days=1),bayes.p_tot)
