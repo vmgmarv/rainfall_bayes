@@ -162,7 +162,7 @@ try:
 except:
     bayes['p_tot'] = float('NaN')
 
-#pos = list((bayes.n_duration / pd.Timedelta(days=1)))
+
 pos = list(bayes.n_rain)
 width = 0.25
 fig,ax = plt.subplots(figsize=(10,8))
@@ -189,8 +189,6 @@ ax1.set_zlabel('P(L|C,D)')
 ax1.set_title('1-Day Cumulative Rainfall', fontsize = 25)
 
 
-#'''
-#new algo needed
-#'''
+
 #matrix.loc[(matrix['duration'] >= '10D')&(matrix['duration']<='30D')]
 #plt.plot(bayes.n_duration/pd.Timedelta(days=1),bayes.p_tot)
