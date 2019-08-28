@@ -51,7 +51,7 @@ def query_alert(site_code):
     d.columns = read.column_names
     d = d[['trigger_type', 'timestamp']]
     d.columns = ['trigger_type', 'ts_landslide']
-    d['ts_landslide'] = d['ts_landslide'].dt.round('60min')
+    d['ts_landslide'] = d['ts_landslide'].dt.round('30min')
     d['id'] = 1
     return d
 
@@ -119,7 +119,27 @@ for i in range(len(d_u)):
 final.reset_index(inplace=True)
 final = final.drop_duplicates(subset='index', keep='first')
 
+############################################################################### You are here
+'''
+Parta alerts:
+    2017-08-23
+    2017-12-15
+    2018-01-17
+    2018-04-11
+'''
 
+ts_alerts = np.array([pd.Timestamp('2017-08-23'), pd.Timestamp('2017-12-15'),
+                      pd.Timestamp('2018-01-17'), pd.Timestamp('2018-04-11')])
+
+gap = pd.Timedelta(days=12)
+min_rain = 1.5
+days = 15
+
+for i,j in zip(df_rain.ts_rain,np.arange(len(df_rain))):
+    while (i - df_rain.ts_rain[j] < gap) & (df_rain.rain[j] > min_rain):
+        print(i, 'oha')
+        j+1
+###############################################################################
 '''
 Bayesian proper
 '''
