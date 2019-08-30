@@ -57,8 +57,8 @@ def query_alert(site_code):
 
 
 site = 'parta'
-start = '2017-06-01'
-end = '2018-06-01'
+start = '2017-01-01'
+end = '2018-12-12'
 
 df_rain = query_rain(site, start, end)
 
@@ -107,7 +107,7 @@ r_sum = []
 for i,j in zip(df_rain.ts_rain,np.arange(len(df_rain))):
     temp_rain = []
     temp_ts = []
-    while (i - df_rain.ts_rain[j] < gap) & (df_rain.rain[j] > min_rain):
+    if (i - df_rain.ts_rain[j] < gap) & (df_rain.rain[j] > min_rain):
         mm = df_rain.ts_rain[j]
         temp_ts.append(mm)
         temp_rain.append(df_rain.rain[j])
@@ -155,11 +155,11 @@ Bayesian proper
 '''
 
 d_u = np.arange(pd.Timedelta('0D'), pd.Timedelta('2D'), pd.Timedelta('30min'))
-rain_u = np.arange(1,final.cum_rain.max(),20)
+rain_u = np.arange(1,final.cum_rain.max(),10)
 
 tot_triggers = final.alerts.sum()
 total = len(final)
-p3 = tot_triggers / total #p(landslide)
+p3 = tot_triggers / (total) #p(landslide)
 
 p1 = []
 p2 = []
@@ -180,33 +180,14 @@ for m in range(len(d_u)):
                 
                 p1.append(triggers/tot_triggers)
                 p2.append(p_2)
-                new_duration.append(d_u[m])
-                new_rain.append(rain_u[n])
+                new_duration.append(d_u[m+1])
+                new_rain.append(rain_u[n+1])
             except:
                 print('passing', m,n)
                 pass
     except:
         print('error', m)
         pass
-
-#for m, n in zip(np.arange(len(d_u)),np.arange(len(rain_u))):
-#    try:
-#        p_1 = final.loc[(final['duration'] <= d_u[m+1]) &\
-#                         (final['duration'] >= d_u[m]) &\
-#                         (final['cum_rain'] <= rain_u[n+1]) &\
-#                         (final['cum_rain'] >= rain_u[n])]
-#        triggers = p_1.alerts.sum()
-#        p_2 = len(p_1)/len(final)
-#        
-#        p1.append(triggers/tot_triggers)
-#        p2.append(p_2)
-#        new_duration.append(d_u[m])
-#        new_rain.append(rain_u[n])
-#    except:
-#        print('passing', m,n)
-#        pass
-
-
 
 bayes = pd.DataFrame({'p1':p1, 'p2':p2, 'n_rain':new_rain, 'n_duration':new_duration})
 bayes.sort_values('n_duration')
@@ -231,7 +212,7 @@ dy = np.ones(len(bayes))
 dz = bayes.p_tot
 
 ax1.bar3d(x3, y3, z3, dx, dy, dz)
-ax1.set_xlabel('Duration(minutes)')
+ax1.set_xlabel('Duration (30min)')
 ax1.set_ylabel('Cumulative rainfall (mm)')
 ax1.set_zlabel('P(L|C,D)')
 ax1.set_title('Bayes theorem Intensity Duration', fontsize = 25)
