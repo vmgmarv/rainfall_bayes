@@ -107,7 +107,7 @@ r_sum = []
 for i,j in zip(df_rain.ts_rain,np.arange(len(df_rain))):
     temp_rain = []
     temp_ts = []
-    if (i - df_rain.ts_rain[j] < gap) & (df_rain.rain[j] > min_rain):
+    while (i - df_rain.ts_rain[j] < gap) & (df_rain.rain[j] > min_rain):
         mm = df_rain.ts_rain[j]
         temp_ts.append(mm)
         temp_rain.append(df_rain.rain[j])
