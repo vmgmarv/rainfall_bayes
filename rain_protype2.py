@@ -7,11 +7,11 @@ Created on Tue Sep 10 14:45:22 2019
 
 import mysql.connector as sql
 import pandas as pd
-from pandas import Series
 import matplotlib.pyplot as plt
-import matplotlib.dates as md
+#import matplotlib.dates as md
 import numpy as np
-from mpl_toolkits.mplot3d import Axes3D
+import time
+start_time = time.time()
 
 db_connection = sql.connect(host='127.0.0.1', database='senslopedb', 
                             user='root', password='senslope')
@@ -57,8 +57,8 @@ def query_alert(site_code):
 
 
 site = 'parta'
-start = '2018-04-01'
-end = '2018-04-15'
+start = '2017-01-01'
+end = '2018-12-15'
 
 df_rain = query_rain(site, start, end)
 
@@ -100,7 +100,7 @@ ts_alerts = np.array([pd.Timestamp('2017-08-23'), pd.Timestamp('2017-12-15'),
 gap = pd.Timedelta(days=5)
 min_rain = 0.1
 days = pd.Timedelta(days=15)
-al_time = pd.Timedelta('4hours')
+al_time = pd.Timedelta(days=1)
 
 
 
@@ -110,56 +110,70 @@ rain = []
 
 for o in (df_rain.ts_rain):
     
-    dis = df_rain[(df_rain.ts_rain >= o)&(df_rain.ts_rain < o + gap)]
+    ##################################################################### reduce the gap to [start date, gap]
+    dis = df_rain.loc[(df_rain.ts_rain >= o)&(df_rain.ts_rain <= o + gap)]
     dis.reset_index(inplace=True)
-
-    
-    if dis['rain'].sum() == 0:
-        continue
-    
-    
+    dis = dis.drop('index', axis=1)
+ 
+    #################################################################### iterate through dis
+    temp_rain = []
+    temp_duration = []
     for i in dis.index:
-        if dis.rain[i] >= min_rain: ####pag nag start nang umulan
-            dis2 = dis[(dis.ts_rain >= o)&(dis.ts_rain < o + gap)] ### magsisimula kung saan nagsimula ang ulan
-            dis2.reset_index(inplace=True)
-            temp_ts = []
-            temp_rain = []
-            for j in dis2.index: ############### cut niya yung pd duon sa may ulan lang                
-                if dis2.rain[j] < min_rain: ###check niya within 3 hours kung may ulan na umabot sa min rain
-                    x = np.arange(dis2.ts_rain[j], dis2.ts_rain[j] + al_time, pd.Timedelta('30minutes')) 
-                    ext = dis2[(dis2.ts_rain >= x[0])&(dis2.ts_rain <= x[-1])]
-                    l = ext.loc[ext['rain'] > min_rain]
-                    
-                    if l.empty:
-                        break
-                    else:
-                        print(l)
-                        
-                temp_ts.append(dis2.ts_rain[j]) 
-                temp_rain.append(dis2.rain[j])
-    duration.append(temp_ts)
-    rain.append(temp_rain)
-    
-            
-final_dur = []
-final_rain = []
-last_ts = []
-for k,l,m in zip(duration, rain, np.arange(len(rain))):
-    if len(duration[m]) <= 1:
-        final_dur.append(0)
-        final_rain.append(0)
-        last_ts.append(0)
-    else:
-        final_dur.append(k[-1] - k[0])
-        final_rain.append(sum(l))
-        last_ts.append(k[-1])
         
-############################################################################################## edit this part
+        if dis.rain[i] < min_rain:
+            dis2 = dis.loc[(dis.ts_rain > dis.ts_rain[i]) \
+                           &(dis.ts_rain <= dis.ts_rain[i] + al_time)] #### get allowance time extension
+            
+            w_rain = dis2.loc[dis2.rain >= min_rain] ############## get those with rain within allowance time
+            w_rain.reset_index(inplace=True)
+            if w_rain.empty: ##### if within allowance time walang ulan, break loop
+                break
+            else: ###### if meron within allowance time, include ulan
+                k_rain = w_rain['rain'].sum()
+                mm = w_rain.iloc[-1]
+                l_ts = mm['ts_rain']
+                temp_rain.append(k_rain)
+                temp_duration.append(l_ts)
+        else:
+            temp_rain.append(dis.rain[i])
+            temp_duration.append(dis.ts_rain[i])
+
+    duration.append(temp_duration)
+    rain.append(temp_rain)
+
+duration = [x for x in duration if x != []]
+rain = [x for x in rain if x != []]
+
+############################################################################### remove duplicates and get duration in days
+dur = []
+r_sum = []
+last_ts = []
+for n in range(len(duration)):
+    temp_df = pd.DataFrame({'ts_rain':duration[n], 'rain':rain[n]})
+    temp_df = temp_df.sort_values('rain', ascending=False).drop_duplicates('ts_rain').sort_index() ###remove duplicates
+    
+    ts = np.array(temp_df['ts_rain'])
+    try:
+        dur.append(pd.to_datetime(ts[-1]) - pd.to_datetime(ts[0]))
+        r_sum.append(temp_df['rain'].sum())
+        last_ts.append(ts[-1])
+    except: ####### if len(temp_df) = 1
+        dur.append(pd.Timedelta(days=0))
+        r_sum.append(temp_df['rain'].sum())
+        last_ts.append(ts[0])
+###############################################################################
+
+print("################\
+      Done discretizing\
+      #################")
+
+############################################################################### creating alerts
 f_slide = []
-for i in ts_alerts:
+for m in ts_alerts:
     temp_slide = []
-    for j in np.arange(len(last_ts)):
-        if (last_ts[j] - i <= pd.Timedelta(days=0)) & (last_ts[j] - i >= pd.Timedelta(days=-15)):
+    for j in range(len(last_ts)):
+        if (pd.to_datetime(last_ts[j]) - m <= pd.Timedelta(days=0)) \
+            & (pd.to_datetime(last_ts[j]) - m >= -days):
             temp_slide.append(1)
         else:
             temp_slide.append(0)
@@ -167,8 +181,85 @@ for i in ts_alerts:
 
 f_slide = np.array(f_slide)
 
-alerts = np.sum(f_slide, axis=0)
+alerts = np.sum(f_slide,axis=0)
+final = pd.DataFrame({'ts':last_ts, 'alerts':alerts, 'cum_rain':r_sum, 'duration':dur})
+final = final.sort_values('cum_rain', ascending=False).drop_duplicates('ts').sort_index()
 
-final = pd.DataFrame({'duration':final_dur, 'cum_rain':final_rain, 'alerts':alerts})
-final['duration'] = pd.to_timedelta(final['duration'], unit='m')
-#alert = [1 if x!=0 else 0 for x in final_movt]
+
+
+print("################\
+      Done creating table\
+      #################")
+############################################################################### BAYESIAN proper
+'''
+Bayesian proper
+'''
+
+d_u = np.arange(pd.Timedelta('0D'), pd.Timedelta('2D'), pd.Timedelta('30min'))
+rain_u = np.arange(1,final.cum_rain.max(),10)
+
+tot_triggers = final.alerts.sum()
+total = len(final)
+p3 = tot_triggers / (total) #p(landslide)
+
+p1 = []
+p2 = []
+p_tot = []
+new_duration = []
+new_rain = []
+
+for m in range(len(d_u)):
+    try:
+        for n in range(len(rain_u)):
+            try:
+                p_1 = final.loc[(final['duration'] <= d_u[m+1]) &\
+                                 (final['duration'] >= d_u[m]) &\
+                                 (final['cum_rain'] <= rain_u[n+1]) &\
+                                 (final['cum_rain'] >= rain_u[n])]
+                triggers = p_1.alerts.sum()
+                p_2 = len(p_1)/len(final)
+                
+                p1.append(triggers/tot_triggers)
+                p2.append(p_2)
+                new_duration.append(d_u[m+1])
+                new_rain.append(rain_u[n+1])
+            except:
+                print('passing', m,n)
+                pass
+    except:
+        print('error', m)
+        pass
+
+bayes = pd.DataFrame({'p1':p1, 'p2':p2, 'n_rain':new_rain, 'n_duration':new_duration})
+bayes.sort_values('n_duration')
+
+try:
+    bayes['p_tot'] = (bayes.p1 * p3) / (bayes.p2)
+except:
+    bayes['p_tot'] = float('NaN')
+
+
+
+fig1 = plt.figure()
+ax1 = fig1.add_subplot(111, projection='3d')
+
+
+x3 = list((bayes.n_duration / pd.Timedelta(minutes=30)))
+y3 = bayes.n_rain
+z3 = np.zeros(len(bayes))
+
+dx = np.ones(len(bayes))
+dy = np.ones(len(bayes))
+dz = bayes.p_tot
+
+ax1.bar3d(x3, y3, z3, dx, dy, dz)
+ax1.set_xlabel('Duration (30min)')
+ax1.set_ylabel('Cumulative rainfall (mm)')
+ax1.set_zlabel('P(L|C,D)')
+ax1.set_title('Bayes theorem Intensity Duration', fontsize = 25)
+ax1.set_zlim(0,1)
+
+
+    
+    
+print("--- %s seconds ---" % (time.time() - start_time))
