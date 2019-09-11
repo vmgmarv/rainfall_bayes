@@ -13,12 +13,14 @@ import numpy as np
 import time
 start_time = time.time()
 
-db_connection = sql.connect(host='127.0.0.1', database='senslopedb', 
-                            user='root', password='senslope')
+#db_connection = sql.connect(host='127.0.0.1', database='senslopedb', 
+#                            user='root', password='senslope')
 
 #db_connection = sql.connect(host='192.168.150.75', database='senslopedb', 
 #                            user='pysys_local', password='NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg')
 
+db_connection = sql.connect(host='127.0.0.1', database='senslopedb', 
+                            user='root', password='alienware091394')
 
 def query_rain(site,start,end):
     read = db_connection.cursor()
@@ -57,8 +59,8 @@ def query_alert(site_code):
 
 
 site = 'parta'
-start = '2017-01-01'
-end = '2018-12-15'
+start = '2017-08-01'
+end = '2018-01-01'
 
 df_rain = query_rain(site, start, end)
 
@@ -97,10 +99,10 @@ Parta alerts:
 ts_alerts = np.array([pd.Timestamp('2017-08-23'), pd.Timestamp('2017-12-15'),
                       pd.Timestamp('2018-01-17'), pd.Timestamp('2018-04-11')])
 
-gap = pd.Timedelta(days=5)
-min_rain = 0.1
-days = pd.Timedelta(days=15)
-al_time = pd.Timedelta(days=1)
+gap = pd.Timedelta(days=3)
+min_rain = 1.5
+days = pd.Timedelta(days=10)
+al_time = pd.Timedelta('1hour')
 
 
 
@@ -109,6 +111,7 @@ duration = []
 rain = []
 
 for o in (df_rain.ts_rain):
+    print(o)
     
     ##################################################################### reduce the gap to [start date, gap]
     dis = df_rain.loc[(df_rain.ts_rain >= o)&(df_rain.ts_rain <= o + gap)]
@@ -152,6 +155,7 @@ for n in range(len(duration)):
     temp_df = pd.DataFrame({'ts_rain':duration[n], 'rain':rain[n]})
     temp_df = temp_df.sort_values('rain', ascending=False).drop_duplicates('ts_rain').sort_index() ###remove duplicates
     
+    temp_df = temp_df.sort_values('ts_rain',ascending=True)
     ts = np.array(temp_df['ts_rain'])
     try:
         dur.append(pd.to_datetime(ts[-1]) - pd.to_datetime(ts[0]))
@@ -161,11 +165,6 @@ for n in range(len(duration)):
         dur.append(pd.Timedelta(days=0))
         r_sum.append(temp_df['rain'].sum())
         last_ts.append(ts[0])
-###############################################################################
-
-print("################\
-      Done discretizing\
-      #################")
 
 ############################################################################### creating alerts
 f_slide = []
@@ -184,12 +183,11 @@ f_slide = np.array(f_slide)
 alerts = np.sum(f_slide,axis=0)
 final = pd.DataFrame({'ts':last_ts, 'alerts':alerts, 'cum_rain':r_sum, 'duration':dur})
 final = final.sort_values('cum_rain', ascending=False).drop_duplicates('ts').sort_index()
+################################################################################ reducing alerts
+temp_final = final[final.alerts == 1]
 
-
-
-print("################\
-      Done creating table\
-      #################")
+o_alert = temp_final['ts'].iloc[0]
+final['alerts'] = np.where((final['alerts'] == 1) & (final['ts'] - final['ts'].shift(1) <= pd.Timedelta(days=3)), 1, 0)
 ############################################################################### BAYESIAN proper
 '''
 Bayesian proper
@@ -200,14 +198,16 @@ rain_u = np.arange(1,final.cum_rain.max(),10)
 
 tot_triggers = final.alerts.sum()
 total = len(final)
-p3 = tot_triggers / (total) #p(landslide)
+p3 = tot_triggers / (total*2) #p(landslide)
 
 p1 = []
 p2 = []
 p_tot = []
 new_duration = []
 new_rain = []
+###############################################################################
 
+###############################################################################
 for m in range(len(d_u)):
     try:
         for n in range(len(rain_u)):
@@ -239,7 +239,7 @@ except:
     bayes['p_tot'] = float('NaN')
 
 
-
+from mpl_toolkits.mplot3d import axes3d, Axes3D #<-- Note the capitalization! 
 fig1 = plt.figure()
 ax1 = fig1.add_subplot(111, projection='3d')
 
@@ -252,6 +252,7 @@ dx = np.ones(len(bayes))
 dy = np.ones(len(bayes))
 dz = bayes.p_tot
 
+
 ax1.bar3d(x3, y3, z3, dx, dy, dz)
 ax1.set_xlabel('Duration (30min)')
 ax1.set_ylabel('Cumulative rainfall (mm)')
@@ -262,4 +263,17 @@ ax1.set_zlim(0,1)
 
     
     
-print("--- %s seconds ---" % (time.time() - start_time))
+#print("--- %s seconds ---" % (time.time() - start_time))
+
+
+#import pyttsx3
+#
+#
+#engine = pyttsx3.init()
+#""" RATE"""
+#rate = engine.getProperty('rate')   # getting details of current speaking rate
+#print (rate)                        #printing current voice rate
+#engine.setProperty('rate', 125)     # setting up new voice rate
+#
+#engine.say("Sir Marvin, your script is already done. Comeback now")
+#engine.runAndWait()
