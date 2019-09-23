@@ -67,7 +67,7 @@ def data(site, start, end, site_name):
     
     return df_rain, df_movt
 
-def discretize(ts_alerts, df_rain):
+def discretize(ts_alerts, df_rain,gap,min_rain):
 
     i = 0 
     
@@ -78,6 +78,10 @@ def discretize(ts_alerts, df_rain):
             break
     
         df = df_rain.loc[(df_rain.ts_rain >= ts_alerts[i])&(df_rain.ts_rain <= ts_alerts[i+1])]
+        
+        if df.empty:
+            i+=1
+            continue
         
     
         f = df.iloc[0,:]
@@ -184,7 +188,7 @@ def parameters(ts_final2, rain_final2):
     
     return final, ts_last, sum_rain
 
-def alerts(df_rain, ts_final2, rain_final2, ts_alerts, min_rain,to_plot):
+def alerts(df_rain, ts_final2, rain_final2, ts_alerts, days_landslide,min_rain,to_plot):
     
     final,ts_last, sum_rain = parameters(ts_final2, rain_final2)
 
@@ -205,7 +209,6 @@ def alerts(df_rain, ts_final2, rain_final2, ts_alerts, min_rain,to_plot):
         a = df_a.iloc[0,:]
         ts_al.append(a.ts)
         
-        print('real alerts = ', ts_alerts[m+1], 'predicted alerts = ', a.ts)
         m+=1
     
     
@@ -213,7 +216,7 @@ def alerts(df_rain, ts_final2, rain_final2, ts_alerts, min_rain,to_plot):
     final.loc[final['ts'].isin(ts_al), 'alerts'] = 1
     
     
-    print(final[final.alerts == 1])
+#    print(final[final.alerts == 1])
 
     
     if to_plot == 1:
@@ -252,9 +255,6 @@ def alerts(df_rain, ts_final2, rain_final2, ts_alerts, min_rain,to_plot):
                 plt.axvline(ts_alerts[k+1], color = 'r')
             except:
                 pass
-        
-        for l in range(len(mm)):
-            plt.axvline(mm[l], color = 'g')
     
         xfmt = md.DateFormatter('%Y-%m-%d %H:%M:%S')
         ax=plt.gca()
@@ -361,7 +361,7 @@ if __name__ == "__main__":
     ##############################################################################
     
 
-    ts_final2, rain_final2 = discretize(ts_alerts,df_rain)
+    ts_final2, rain_final2 = discretize(ts_alerts,df_rain,gap,min_rain)
     final = alerts(df_rain, ts_final2,rain_final2,ts_alerts, min_rain, to_plot = 1)
     bayes = bayesian(final, to_plot = 1)
     
