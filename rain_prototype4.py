@@ -184,7 +184,7 @@ def parameters(ts_final2, rain_final2):
     
     return final, ts_last, sum_rain
 
-def alerts(df_rain, ts_final2, rain_final2, ts_alerts, to_plot):
+def alerts(df_rain, ts_final2, rain_final2, ts_alerts, min_rain,to_plot):
     
     final,ts_last, sum_rain = parameters(ts_final2, rain_final2)
 
@@ -212,27 +212,35 @@ def alerts(df_rain, ts_final2, rain_final2, ts_alerts, to_plot):
     final['alerts'] = 0
     final.loc[final['ts'].isin(ts_al), 'alerts'] = 1
     
+    
     print(final[final.alerts == 1])
 
     
     if to_plot == 1:
+        ####################################################################### minimum rain = 0
+        df_rain.loc[(df_rain['rain']<min_rain),'rain'] = 0
+        #######################################################################
         fig1, ax = plt.subplots()
         plt.plot(df_rain.ts_rain, df_rain.rain, marker = 'o')
         
+        mm = list(final.ts)
+        nn = list(final.cum_rain)
+        oo = list(final.duration)
         for i in range(len(ts_alerts)):
             try:            
-                plt.axvline(ts_alerts[i+1], color = 'r', label = ts_alerts[i+1])
+                plt.axvline(ts_alerts[i+1], color = 'r')
             except:
                 pass
         
-        for j in range(len(ts_al)):
-            plt.axvline(ts_al[j], color = 'g', label = ts_alerts[j])
+        for j in range(len(mm)):
+            plt.axvline(mm[j], linestyle = 'dashed',color = 'g')
+            plt.text(x=mm[j], y=max(df_rain.rain)/2,s ='{},{}'.format(nn[j],oo[j]))
         
         xfmt = md.DateFormatter('%Y-%m-%d %H:%M:%S')
         ax=plt.gca()
         ax.xaxis.set_major_formatter(xfmt)
         plt.xticks( rotation=25 )
-        ax.legend(fontsize = 8, loc = 'upper right')
+#        ax.legend(fontsize = 8, loc = 'upper right')
         plt.title('Instataneous rain', fontsize = 20)
         
         
@@ -241,18 +249,18 @@ def alerts(df_rain, ts_final2, rain_final2, ts_alerts, to_plot):
         
         for k in range(len(ts_alerts)):
             try:
-                plt.axvline(ts_alerts[k+1], color = 'r', label = ts_alerts[k+1])
+                plt.axvline(ts_alerts[k+1], color = 'r')
             except:
                 pass
         
-        for l in range(len(ts_al)):
-            plt.axvline(ts_al[l], color = 'g', label = ts_alerts[l])
+        for l in range(len(mm)):
+            plt.axvline(mm[l], color = 'g')
     
         xfmt = md.DateFormatter('%Y-%m-%d %H:%M:%S')
         ax=plt.gca()
         ax.xaxis.set_major_formatter(xfmt)
         plt.xticks( rotation=25 )
-        ax.legend(fontsize = 8, loc = 'upper right')
+#        ax.legend(fontsize = 8, loc = 'upper right')
         plt.title('Discretized rain', fontsize = 20)
 
     return final
@@ -350,11 +358,11 @@ if __name__ == "__main__":
     gap = pd.Timedelta(hours=50)
     min_rain = 1.5
     days_landslide = pd.Timedelta(days=15)
-    ################################################################################## rainfall event discretize
+    ##############################################################################
+    
+
     ts_final2, rain_final2 = discretize(ts_alerts,df_rain)
-    ################################################################################## creating alerts
-    final = alerts(df_rain, ts_final2,rain_final2,ts_alerts, to_plot = 1)
-    ################################################################################### bayesian
+    final = alerts(df_rain, ts_final2,rain_final2,ts_alerts, min_rain, to_plot = 1)
     bayes = bayesian(final, to_plot = 1)
     
     
