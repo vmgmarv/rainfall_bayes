@@ -128,7 +128,12 @@ def discretize(ts_alerts, df_rain,gap,min_rain):
                     rain = []
                 
                 else:
-                    k_rain = temp_df['rain'].sum()
+                    try:
+                        k_rain = temp_df['rain'].sum()
+                    except:
+                        k_rain = np.array(temp_df['rain']).astype(float).tolist()
+                        k_rain = sum(k_rain)
+                        
                     k_ts = w_rain.iloc[-1,:]
                     
                     ts.append(k_ts.ts_rain)
@@ -176,7 +181,11 @@ def parameters(ts_final2, rain_final2):
                 
             else:
                 t_d = ts_a[l][-1] - ts_a[l][0]
-                r = sum(r_a[l])
+                try:
+                    r = sum(r_a[l])
+                except:
+                    r = np.array(r_a[l]).astype(float).tolist()
+                    r = sum(r)
                 
                 dur.append(t_d)
                 s_rain.append(r)
@@ -362,11 +371,10 @@ if __name__ == "__main__":
     
 
     ts_final2, rain_final2 = discretize(ts_alerts,df_rain,gap,min_rain)
-    final = alerts(df_rain, ts_final2,rain_final2,ts_alerts, min_rain, to_plot = 1)
+    final = alerts(df_rain, ts_final2, rain_final2, ts_alerts, days_landslide,min_rain,to_plot=1)
     bayes = bayesian(final, to_plot = 1)
     
     
     print('{}'.format(bayes[bayes.p_tot > 0.1]))    
         
     print("--- %s seconds ---" % (time.time() - start_time))
-            
