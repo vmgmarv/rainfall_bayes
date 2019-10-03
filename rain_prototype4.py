@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Sep 19 10:05:13 2019
-
-@author: Dynaslope
 """
 
 import mysql.connector as sql
@@ -276,8 +274,8 @@ def alerts(df_rain, ts_final2, rain_final2, ts_alerts, days_landslide,min_rain,t
 
 def bayesian(final, to_plot):
     
-    d_u = np.arange(pd.Timedelta(minutes=30), pd.Timedelta(days=7), pd.Timedelta(days=1))
-    rain_u = np.arange(1,final.cum_rain.max(),10)
+    d_u = np.arange(pd.Timedelta(minutes=30), pd.Timedelta(days=7), pd.Timedelta(hours=48))
+    rain_u = np.arange(1,final.cum_rain.max(),40)
     
     tot_triggers = final.alerts.sum()
     
@@ -286,7 +284,8 @@ def bayesian(final, to_plot):
     p2 = []
     new_duration = []
     new_rain = []
-
+    ts = []
+    ts_alert = []
     for m in range(len(d_u)):
         try:
             for n in range(len(rain_u)):
@@ -296,6 +295,19 @@ def bayesian(final, to_plot):
                                      (final['cum_rain'] <= rain_u[n+1]) &\
                                      (final['cum_rain'] >= rain_u[n])]
                     triggers = p_1.alerts.sum()
+                    
+                    if p_1.empty:
+                        ts_alert.append(0)
+                    else:
+                        if p_1[p_1.alerts == 1].empty:
+                            ts_alert.append(0)
+                        else:
+                            ts_alert.append(1)
+                    
+#                    if len(p_1) == 1:
+#                        ts.append(p_1.ts.values[0])
+#                    else:
+#                        ts.append(p_1.ts.values[-1])
       
                     p_2 = len(p_1)/len(final)
                     
@@ -310,14 +322,15 @@ def bayesian(final, to_plot):
     
             pass
     
-    bayes = pd.DataFrame({'p1':p1, 'p2':p2, 'n_rain':new_rain, 'n_duration':new_duration})
+    bayes = pd.DataFrame({'p1':p1, 'p2':p2, 'n_rain':new_rain, 'n_duration':new_duration, 'alerts':ts_alert})
     bayes.sort_values('n_duration')
     p3 = tot_triggers / len(final) #p(landslide)
     try:
         bayes['p_tot'] = (bayes.p1 * p3) / (bayes.p2)
     except:
         bayes['p_tot'] = float('NaN')
-    
+        
+
     if to_plot == 1:
         from mpl_toolkits.mplot3d import axes3d, Axes3D #<-- Note the capitalization! 
         fig1 = plt.figure()
@@ -371,8 +384,8 @@ if __name__ == "__main__":
     
 
     ts_final2, rain_final2 = discretize(ts_alerts,df_rain,gap,min_rain)
-    final = alerts(df_rain, ts_final2, rain_final2, ts_alerts, days_landslide,min_rain,to_plot=1)
-    bayes = bayesian(final, to_plot = 1)
+    final = alerts(df_rain, ts_final2, rain_final2, ts_alerts, days_landslide,min_rain,to_plot=0)
+    bayes = bayesian(final, to_plot = 0)
     
     
     print('{}'.format(bayes[bayes.p_tot > 0.1]))    
