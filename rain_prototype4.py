@@ -236,14 +236,14 @@ def alerts(df_rain, ts_final2, rain_final2, ts_alerts, days_landslide,min_rain,t
         mm = list(final.ts)
         nn = list(final.cum_rain)
         oo = list(final.duration)
-        for i in range(len(ts_alerts)):
-            try:            
-                plt.axvline(ts_alerts[i+1], color = 'r')
-            except:
-                pass
+#        for i in range(len(ts_alerts)):
+#            try:            
+#                plt.axvline(ts_alerts[i+1], color = 'r')
+#            except:
+#                pass
         
         for j in range(len(mm)):
-            plt.axvline(mm[j], linestyle = 'dashed',color = 'g')
+            plt.axvline(mm[j], linestyle = '-.',color = 'g')
             plt.text(x=mm[j], y=max(df_rain.rain)/2,s ='{},{}'.format(nn[j],oo[j]))
         
         xfmt = md.DateFormatter('%Y-%m-%d %H:%M:%S')
@@ -251,17 +251,18 @@ def alerts(df_rain, ts_final2, rain_final2, ts_alerts, days_landslide,min_rain,t
         ax.xaxis.set_major_formatter(xfmt)
         plt.xticks( rotation=25 )
 #        ax.legend(fontsize = 8, loc = 'upper right')
-        plt.title('Instataneous rain', fontsize = 20)
+#        plt.title('Instataneous rain', fontsize = 20)
+        plt.ylabel('Rainfall [mm]', fontsize = 18)
         
         
         fig2, ax = plt.subplots()
         plt.plot(ts_last, sum_rain, marker = 'o')
         
-        for k in range(len(ts_alerts)):
-            try:
-                plt.axvline(ts_alerts[k+1], color = 'r')
-            except:
-                pass
+#        for k in range(len(ts_alerts)):
+#            try:
+#                plt.axvline(ts_alerts[k+1], color = 'r')
+#            except:
+#                pass
     
         xfmt = md.DateFormatter('%Y-%m-%d %H:%M:%S')
         ax=plt.gca()
@@ -360,8 +361,8 @@ if __name__ == "__main__":
     
 
     site = 'parta'
-    start = '2017-01-01'
-    end = '2018-12-30'
+    start = '2017-08-01'
+    end = '2018-04-30'
     site_name = 'par'
     df_rain, df_movt = data(site,start,end,site_name)
     
@@ -384,8 +385,8 @@ if __name__ == "__main__":
     
 
     ts_final2, rain_final2 = discretize(ts_alerts,df_rain,gap,min_rain)
-    final = alerts(df_rain, ts_final2, rain_final2, ts_alerts, days_landslide,min_rain,to_plot=0)
-    bayes = bayesian(final, to_plot = 0)
+    final = alerts(df_rain, ts_final2, rain_final2, ts_alerts, days_landslide,min_rain,to_plot=1)
+    bayes = bayesian(final, to_plot = 1)
     
     
     print('{}'.format(bayes[bayes.p_tot > 0.1]))    

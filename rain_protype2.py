@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Sep 10 14:45:22 2019
-
-@author: Dynaslope
 """
 
 import mysql.connector as sql
@@ -13,14 +11,14 @@ import numpy as np
 import time
 start_time = time.time()
 
-#db_connection = sql.connect(host='127.0.0.1', database='senslopedb', 
-#                            user='root', password='senslope')
+db_connection = sql.connect(host='127.0.0.1', database='senslopedb', 
+                            user='root', password='senslope')
 
 #db_connection = sql.connect(host='192.168.150.75', database='senslopedb', 
 #                            user='pysys_local', password='NaCAhztBgYZ3HwTkvHwwGVtJn5sVMFgg')
 
-db_connection = sql.connect(host='127.0.0.1', database='senslopedb', 
-                            user='root', password='alienware091394')
+#db_connection = sql.connect(host='127.0.0.1', database='senslopedb', 
+#                            user='root', password='alienware091394')
 
 def query_rain(site,start,end):
     read = db_connection.cursor()
@@ -59,8 +57,8 @@ def query_alert(site_code):
 
 
 site = 'parta'
-start = '2017-08-01'
-end = '2018-01-01'
+start = '2017-08-10'
+end = '2018-05-15'
 
 df_rain = query_rain(site, start, end)
 
@@ -99,9 +97,9 @@ Parta alerts:
 ts_alerts = np.array([pd.Timestamp('2017-08-23'), pd.Timestamp('2017-12-15'),
                       pd.Timestamp('2018-01-17'), pd.Timestamp('2018-04-11')])
 
-gap = pd.Timedelta(days=3)
+gap = pd.Timedelta(days=5)
 min_rain = 1.5
-days = pd.Timedelta(days=10)
+days_landslide = pd.Timedelta(days=10)
 al_time = pd.Timedelta('1hour')
 
 
@@ -172,7 +170,7 @@ for m in ts_alerts:
     temp_slide = []
     for j in range(len(last_ts)):
         if (pd.to_datetime(last_ts[j]) - m <= pd.Timedelta(days=0)) \
-            & (pd.to_datetime(last_ts[j]) - m >= -days):
+            & (pd.to_datetime(last_ts[j]) - m >= -days_landslide):
             temp_slide.append(1)
         else:
             temp_slide.append(0)
@@ -187,7 +185,7 @@ final = final.sort_values('cum_rain', ascending=False).drop_duplicates('ts').sor
 temp_final = final[final.alerts == 1]
 
 o_alert = temp_final['ts'].iloc[0]
-final['alerts'] = np.where((final['alerts'] == 1) & (final['ts'] - final['ts'].shift(1) <= pd.Timedelta(days=3)), 1, 0)
+final['alerts'] = np.where((final['alerts'] == 1) & (final['ts'] - final['ts'].shift(1) >= pd.Timedelta(days=1)), 1, 0)
 ############################################################################### BAYESIAN proper
 '''
 Bayesian proper
@@ -198,7 +196,7 @@ rain_u = np.arange(1,final.cum_rain.max(),10)
 
 tot_triggers = final.alerts.sum()
 total = len(final)
-p3 = tot_triggers / (total*2) #p(landslide)
+
 
 p1 = []
 p2 = []
@@ -232,7 +230,7 @@ for m in range(len(d_u)):
 
 bayes = pd.DataFrame({'p1':p1, 'p2':p2, 'n_rain':new_rain, 'n_duration':new_duration})
 bayes.sort_values('n_duration')
-
+p3 = tot_triggers / (len(final)) #p(landslide)
 try:
     bayes['p_tot'] = (bayes.p1 * p3) / (bayes.p2)
 except:
@@ -254,7 +252,7 @@ dz = bayes.p_tot
 
 
 ax1.bar3d(x3, y3, z3, dx, dy, dz)
-ax1.set_xlabel('Duration (30min)')
+ax1.set_xlabel('Duration')
 ax1.set_ylabel('Cumulative rainfall (mm)')
 ax1.set_zlabel('P(L|C,D)')
 ax1.set_title('Bayes theorem Intensity Duration', fontsize = 25)
@@ -263,17 +261,17 @@ ax1.set_zlim(0,1)
 
     
     
-#print("--- %s seconds ---" % (time.time() - start_time))
+print("--- %s seconds ---" % (time.time() - start_time))
 
 
-#import pyttsx3
-#
-#
-#engine = pyttsx3.init()
-#""" RATE"""
-#rate = engine.getProperty('rate')   # getting details of current speaking rate
-#print (rate)                        #printing current voice rate
-#engine.setProperty('rate', 125)     # setting up new voice rate
-#
-#engine.say("Sir Marvin, your script is already done. Comeback now")
-#engine.runAndWait()
+import pyttsx3
+
+
+engine = pyttsx3.init()
+""" RATE"""
+rate = engine.getProperty('rate')   # getting details of current speaking rate
+print (rate)                        #printing current voice rate
+engine.setProperty('rate', 125)     # setting up new voice rate
+
+engine.say("Sir Marvin, your script is already done. Comeback now")
+engine.runAndWait()

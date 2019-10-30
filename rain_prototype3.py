@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
 Created on Wed Sep 18 09:10:07 2019
-
-@author: Dynaslope
 """
 
 import mysql.connector as sql
@@ -100,9 +98,9 @@ ts_alerts = np.array([pd.Timestamp('2017-08-23'), pd.Timestamp('2017-12-15'),
                       pd.Timestamp('2018-01-17'), pd.Timestamp('2018-04-11')])
 
 ############################################################################## rain parameters
-gap = pd.Timedelta(hours=24)
+gap = pd.Timedelta(hours=10)
 min_rain = 1.5
-days_landslide = pd.Timedelta(days=15)
+days_landslide = pd.Timedelta(days=10)
 ##############################################################################
 i = 0 
 ts = []
